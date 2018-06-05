@@ -4,5 +4,5 @@ version = "0.1.0"
 authors = ["Mathieu Amiot <mathieu.amiot@yellowinnovation.fr>"]
 
 [dependencies]
-nats = "0.2"
-actix = "0.5"
+nats = { git = "https://github.com/YellowInnovation/rust-nats", version = "~0.2.0" }
+actix = "~0.5.7"
