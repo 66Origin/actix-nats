@@ -4,6 +4,12 @@ extern crate actix;
 use actix::prelude::*;
 
 pub struct NATSExecutor(nats::Client);
+impl NATSExecutor {
+    pub fn new(client: nats::Client) -> Self {
+        NATSExecutor(client)
+    }
+}
+
 impl Actor for NATSExecutor {
     type Context = SyncContext<Self>;
 }
