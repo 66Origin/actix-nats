@@ -88,11 +88,8 @@ impl<T: 'static +  From<Vec<u8>>> Handler<WaitEventWithInbox<T>> for NATSExecuto
 
     fn handle(&mut self, msg: WaitEventWithInbox<T>, _: &mut Self::Context) -> Self::Result {
         for e in self.0.events() {
-            match e.inbox {
-                Some(ref inbox) if inbox.clone() == msg.inbox => {
-                    return Ok(e.msg.into());
-                },
-                _ => continue
+            if e.subject == msg.inbox {
+                return Ok(e.msg.into());
             }
         }
         Err("No event found".into())
