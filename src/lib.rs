@@ -4,6 +4,8 @@ extern crate actix;
 use actix::prelude::*;
 use std::marker::PhantomData;
 
+pub mod sync;
+
 pub struct NATSExecutor(nats::Client);
 impl NATSExecutor {
     pub fn new(client: nats::Client) -> Self {
@@ -12,7 +14,7 @@ impl NATSExecutor {
 }
 
 impl Actor for NATSExecutor {
-    type Context = SyncContext<Self>;
+    type Context = Context<Self>;
 }
 
 pub struct PublishMessage {
