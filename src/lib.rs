@@ -8,13 +8,21 @@ pub mod sync;
 
 pub struct NATSExecutor(nats::Client);
 impl NATSExecutor {
-    pub fn new(client: nats::Client) -> Self {
+    fn new(client: nats::Client) -> Self {
         NATSExecutor(client)
+    }
+
+    pub fn start(client: nats::Client) -> Addr<Unsync, Self> {
+        Supervisor::start(|_| NATSExecutor::new(client))
     }
 }
 
 impl Actor for NATSExecutor {
     type Context = Context<Self>;
+}
+
+impl Supervised for NATSExecutor {
+    fn restarting(&mut self, _: &mut Self::Context) {}
 }
 
 pub struct PublishMessage {

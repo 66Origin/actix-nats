@@ -5,8 +5,14 @@ use super::*;
 
 pub struct NATSExecutorSync(nats::Client);
 impl NATSExecutorSync {
-    pub fn new(client: nats::Client) -> Self {
+    fn new(client: nats::Client) -> Self {
         NATSExecutorSync(client)
+    }
+
+    pub fn start<F>(threads: usize, client_factory: F) -> Addr<Syn, Self>
+        where F: Fn() -> nats::Client + Send + Sync + 'static
+    {
+        SyncArbiter::start(threads, move || Self::new(client_factory()))
     }
 }
 
