@@ -46,7 +46,7 @@ impl NATSExecutorSync {
         NATSExecutorSync(client)
     }
 
-    pub fn start<F>(threads: usize, client_factory: F) -> Addr<Syn, Self>
+    pub fn start<F>(threads: usize, client_factory: F) -> Addr<Self>
         where F: Fn() -> nats::Client + Send + Sync + 'static
     {
         SyncArbiter::start(threads, move || Self::new(client_factory()))
