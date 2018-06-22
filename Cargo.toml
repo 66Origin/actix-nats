@@ -1,8 +1,8 @@
 [package]
 name = "actix-nats"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Mathieu Amiot <mathieu.amiot@yellowinnovation.fr>"]
 
 [dependencies]
-nats = { git = "https://github.com/YellowInnovation/rust-nats", version = "~0.2.0" }
+nats = "~0.3.0"
 actix = "~0.5.8"
