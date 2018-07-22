@@ -2,6 +2,18 @@
 name = "actix-nats"
 version = "0.3.0"
 authors = ["Mathieu Amiot <mathieu.amiot@yellowinnovation.fr>"]
+license = "MIT/Apache-2.0"
+description = "Actix actor for NATS Message Broker"
+readme = "README.md"
+documentation = "https://docs.rs/actix-nats"
+homepage = "https://github.com/YellowInnovation/actix-nats"
+repository = "https://github.com/YellowInnovation/actix-nats"
+keywords = ["actor", "nats", "actix"]
+categories = ["network-programming", "web-programming", "database"]
+include = [
+    "**/*.rs",
+    "Cargo.toml"
+]
 
 [dependencies]
 nats = "~0.3.0"
