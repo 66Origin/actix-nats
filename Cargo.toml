@@ -5,4 +5,4 @@ authors = ["Mathieu Amiot <mathieu.amiot@yellowinnovation.fr>"]
 
 [dependencies]
 nats = "~0.3.0"
-actix = "~0.6.1"
+actix = "~0.7.1"
