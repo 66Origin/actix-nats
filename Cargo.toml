@@ -1,20 +1,33 @@
 [package]
-name = "actix-nats"
-version = "0.3.0"
 authors = ["Mathieu Amiot <mathieu.amiot@yellowinnovation.fr>"]
-license = "MIT/Apache-2.0"
+categories = [
+    "network-programming",
+    "web-programming",
+    "database",
+]
 description = "Actix actor for NATS Message Broker"
-readme = "README.md"
 documentation = "https://docs.rs/actix-nats"
 homepage = "https://github.com/YellowInnovation/actix-nats"
-repository = "https://github.com/YellowInnovation/actix-nats"
-keywords = ["actor", "nats", "actix"]
-categories = ["network-programming", "web-programming", "database"]
 include = [
     "**/*.rs",
-    "Cargo.toml"
+    "Cargo.toml",
 ]
+keywords = [
+    "actor",
+    "nats",
+    "actix",
+]
+license = "MIT/Apache-2.0"
+name = "actix-nats"
+readme = "README.md"
+repository = "https://github.com/YellowInnovation/actix-nats"
+version = "0.4.0"
 
 [dependencies]
-nats = "~0.3.0"
-actix = "~0.7.1"
+actix = "0.7"
+backoff = "0.1"
+futures = "0.1"
+log = "0.4"
+
+[dependencies.nitox]
+path = "/Users/otak/Developpement/Yellow/OSS/nats-rs"

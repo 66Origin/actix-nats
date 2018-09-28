@@ -5,7 +5,7 @@
 
 ## Description
 
-Actix actor for NATS Message Broker
+Actix actor for NATS Message Broker. Makes use of our `nitox` NATS Async client
 
 ## Documentation
 
@@ -15,7 +15,7 @@ Here: [http://docs.rs/actix-nats](http://docs.rs/actix-nats)
 
 ```toml
 [dependencies]
-actix-nats = "0.3"
+actix-nats = "0.4"
 ```
 
 ## License

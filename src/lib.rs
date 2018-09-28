@@ -1,80 +1,99 @@
 extern crate actix;
-extern crate nats;
+extern crate backoff;
+extern crate futures;
+#[macro_use]
+extern crate log;
+pub extern crate nitox;
 
 use actix::prelude::*;
+use backoff::backoff::Backoff;
+use backoff::ExponentialBackoff;
+use futures::{future, Future};
+use nitox::{
+    protocol::commands::{Message as NatsMessage, PubCommand as NatsPublish},
+    NatsClient, NatsClientOptions, NatsError,
+};
 
-/// PublishMessage is a message that publishes a buffer to the NATS queue but doesn't wait for a reply afterwards.
-/// Think of it as the Pub part in PubSub.
-pub struct PublishMessage {
-    subject: String,
-    data: Vec<u8>,
+mod messages;
+pub use self::messages::*;
+
+/// Actor to give to Actix to do the background processing of NATS messages/requests
+#[derive(Default)]
+pub struct NATSActor {
+    inner: Option<NatsClient>,
+    backoff: ExponentialBackoff,
+    opts: NatsClientOptions,
 }
 
-impl PublishMessage {
-    pub fn new(subject: String, data: Vec<u8>) -> Self {
-        PublishMessage { subject, data }
+impl NATSActor {
+    /// Start new `Supervisor` with `NATSActor`.
+    pub fn start(opts: NatsClientOptions) -> Addr<NATSActor> {
+        let mut backoff = ExponentialBackoff::default();
+        backoff.max_elapsed_time = None;
+
+        Supervisor::start(move |_| NATSActor {
+            opts,
+            backoff,
+            inner: None,
+        })
     }
 }
 
-impl Message for PublishMessage {
-    type Result = Result<(), nats::NatsError>;
+impl Actor for NATSActor {
+    type Context = Context<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        NatsClient::from_options(self.opts.clone())
+            .and_then(|client| client.connect())
+            .into_actor(self)
+            .map(|client, act, _| {
+                info!(target: "actix-nats", "Connected to NATS server: {:#?}", client);
+                act.inner = Some(client);
+                act.backoff.reset();
+            }).map_err(|err, act, ctx| {
+                error!(target: "actix-nats", "Cannot connect to NATS server: {}", err);
+                if let Some(timeout) = act.backoff.next_backoff() {
+                    ctx.run_later(timeout, |_, ctx| ctx.stop());
+                }
+            }).wait(ctx);
+    }
 }
 
-/// RequestWithReply creates a reply inbox in NATS, publishes a message (Request in terms of NATS grammar)
-/// and waits for the reply to come back.
-pub struct RequestWithReply {
-    subject: String,
-    data: Vec<u8>,
-    inbox: Option<String>,
+impl Supervised for NATSActor {
+    fn restarting(&mut self, _: &mut Self::Context) {
+        self.inner.take();
+    }
 }
 
-impl RequestWithReply {
-    pub fn new(subject: String, data: Vec<u8>) -> Self {
-        RequestWithReply {
-            subject,
-            data,
-            inbox: None,
+impl Handler<PublishMessage> for NATSActor {
+    type Result = ResponseFuture<(), NatsError>;
+
+    fn handle(&mut self, msg: PublishMessage, _: &mut Self::Context) -> Self::Result {
+        if let Some(ref mut client) = self.inner {
+            let cmd = match NatsPublish::builder()
+                .subject(msg.subject)
+                .payload(msg.data)
+                .build()
+            {
+                Ok(cmd) => cmd,
+                Err(e) => return Box::new(future::err(NatsError::CommandBuildError(e))),
+            };
+
+            Box::new(client.publish(cmd))
+        } else {
+            Box::new(future::err(NatsError::ServerDisconnected(None)))
         }
     }
 }
 
-impl Message for RequestWithReply {
-    type Result = Result<Vec<u8>, nats::NatsError>;
-}
+impl Handler<RequestWithReply> for NATSActor {
+    type Result = ResponseFuture<NatsMessage, NatsError>;
 
-/// Actor to give to Actix to do the background processing of NATS messages/requests
-pub struct NATSExecutorSync(nats::Client);
-impl NATSExecutorSync {
-    fn new(client: nats::Client) -> Self {
-        NATSExecutorSync(client)
-    }
-
-    /// Starts the executor. Give it a number of threads and a factory `Fn() -> nats::Client` that handles client creation and you're good to go.
-    pub fn start<F>(threads: usize, client_factory: F) -> Addr<Self>
-    where
-        F: Fn() -> nats::Client + Send + Sync + 'static,
-    {
-        SyncArbiter::start(threads, move || Self::new(client_factory()))
-    }
-}
-
-impl Actor for NATSExecutorSync {
-    type Context = SyncContext<Self>;
-}
-
-impl Handler<PublishMessage> for NATSExecutorSync {
-    type Result = Result<(), nats::NatsError>;
-
-    fn handle(&mut self, msg: PublishMessage, _: &mut Self::Context) -> Self::Result {
-        self.0.publish(&msg.subject, &msg.data)
-    }
-}
-
-impl Handler<RequestWithReply> for NATSExecutorSync {
-    type Result = Result<Vec<u8>, nats::NatsError>;
-
-    fn handle(&mut self, mut msg: RequestWithReply, _: &mut Self::Context) -> Self::Result {
-        msg.inbox = Some(self.0.make_request(&msg.subject, &msg.data)?);
-        Ok(self.0.wait()?.msg)
+    fn handle(&mut self, msg: RequestWithReply, _: &mut Self::Context) -> Self::Result {
+        if let Some(ref mut client) = self.inner {
+            Box::new(client.request(msg.subject, msg.data.into()))
+        } else {
+            Box::new(future::err(NatsError::ServerDisconnected(None)))
+        }
     }
 }
