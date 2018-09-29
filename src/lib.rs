@@ -31,6 +31,7 @@ impl NATSActor {
         let mut backoff = ExponentialBackoff::default();
         backoff.max_elapsed_time = None;
 
+        debug!(target: "actix-nats", "Starting Supervisor/Actor with opts {:#?}", opts);
         Supervisor::start(move |_| NATSActor {
             opts,
             backoff,
@@ -43,9 +44,12 @@ impl Actor for NATSActor {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
+        debug!(target: "actix-nats", "Starting client...");
         NatsClient::from_options(self.opts.clone())
-            .and_then(|client| client.connect())
-            .into_actor(self)
+            .and_then(|client| {
+                debug!(target: "actix-nats", "Client created {:#?}", client);
+                client.connect()
+            }).into_actor(self)
             .map(|client, act, _| {
                 info!(target: "actix-nats", "Connected to NATS server: {:#?}", client);
                 act.inner = Some(client);
@@ -61,7 +65,9 @@ impl Actor for NATSActor {
 
 impl Supervised for NATSActor {
     fn restarting(&mut self, _: &mut Self::Context) {
+        debug!(target: "actix-nats", "Supervisor restarted actor");
         self.inner.take();
+        self.backoff.reset();
     }
 }
 
@@ -81,6 +87,7 @@ impl Handler<PublishMessage> for NATSActor {
 
             Box::new(client.publish(cmd))
         } else {
+            error!(target: "actix-nats", "Cannot send message because client is not ready");
             Box::new(future::err(NatsError::ServerDisconnected(None)))
         }
     }
@@ -91,8 +98,10 @@ impl Handler<RequestWithReply> for NATSActor {
 
     fn handle(&mut self, msg: RequestWithReply, _: &mut Self::Context) -> Self::Result {
         if let Some(ref mut client) = self.inner {
+            debug!(target: "actix-nats", "Sending request with payload {:#?}", msg);
             Box::new(client.request(msg.subject, msg.data.into()))
         } else {
+            error!(target: "actix-nats", "Cannot send message because client is not ready");
             Box::new(future::err(NatsError::ServerDisconnected(None)))
         }
     }

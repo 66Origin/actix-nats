@@ -42,6 +42,7 @@ impl Message for Subscribe {
 
 /// RequestWithReply creates a reply inbox in NATS, publishes a message (Request in terms of NATS grammar)
 /// and waits for the reply to come back.
+#[derive(Debug, Clone)]
 pub struct RequestWithReply {
     pub(crate) subject: String,
     pub(crate) data: Vec<u8>,
