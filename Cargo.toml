@@ -28,7 +28,4 @@ actix = "0.7"
 backoff = "0.1"
 futures = "0.1"
 log = { version = "0.4", features = ["max_level_debug", "release_max_level_warn"] }
-
-[dependencies.nitox]
-git = "https://github.com/YellowInnovation/nitox"
-branch = "develop"
+nitox = "0.1"
