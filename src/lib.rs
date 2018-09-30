@@ -10,7 +10,7 @@ use backoff::backoff::Backoff;
 use backoff::ExponentialBackoff;
 use futures::{future, Future};
 use nitox::{
-    protocol::commands::{Message as NatsMessage, PubCommand as NatsPublish},
+    commands::{Message as NatsMessage, PubCommand as NatsPublish},
     NatsClient, NatsClientOptions, NatsError,
 };
 

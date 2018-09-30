@@ -1,5 +1,5 @@
 use actix::prelude::*;
-use nitox::{protocol::commands::Message as NatsMessage, NatsError};
+use nitox::{commands::Message as NatsMessage, NatsError};
 
 /// PublishMessage is a message that publishes a buffer to the NATS queue but doesn't wait for a reply afterwards.
 /// Think of it as the Pub part in PubSub.
