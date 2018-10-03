@@ -29,3 +29,6 @@ backoff = "0.1"
 futures = "0.1"
 log = { version = "0.4", features = ["max_level_debug", "release_max_level_warn"] }
 nitox = "0.1"
+
+[dev-dependencies]
+env_logger = "0.5"
