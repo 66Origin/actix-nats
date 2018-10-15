@@ -28,4 +28,7 @@ actix = "0.7"
 backoff = "0.1"
 futures = "0.1"
 log = { version = "0.4", features = ["max_level_debug", "release_max_level_warn"] }
-nitox = "0.1"
+
+[dependencies.nitox]
+path = "/Users/otak/Developpement/Yellow/OSS/nats-rs"
+version = "0.1"

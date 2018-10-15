@@ -8,7 +8,7 @@ pub extern crate nitox;
 use actix::prelude::*;
 use backoff::backoff::Backoff;
 use backoff::ExponentialBackoff;
-use futures::{future, Future};
+use futures::{future, prelude::*};
 use nitox::{
     commands::{Message as NatsMessage, PubCommand as NatsPublish},
     NatsClient, NatsClientOptions, NatsError,
@@ -75,7 +75,7 @@ impl Handler<PublishMessage> for NATSActor {
     type Result = ResponseFuture<(), NatsError>;
 
     fn handle(&mut self, msg: PublishMessage, _: &mut Self::Context) -> Self::Result {
-        if let Some(ref mut client) = self.inner {
+        if let Some(ref client) = self.inner {
             let cmd = match NatsPublish::builder()
                 .subject(msg.subject)
                 .payload(msg.data)
@@ -97,11 +97,84 @@ impl Handler<RequestWithReply> for NATSActor {
     type Result = ResponseFuture<NatsMessage, NatsError>;
 
     fn handle(&mut self, msg: RequestWithReply, _: &mut Self::Context) -> Self::Result {
-        if let Some(ref mut client) = self.inner {
+        if let Some(ref client) = self.inner {
             debug!(target: "actix-nats", "Sending request with payload {:#?}", msg);
             Box::new(client.request(msg.subject, msg.data.into()))
         } else {
             error!(target: "actix-nats", "Cannot send message because client is not ready");
+            Box::new(future::err(NatsError::ServerDisconnected(None)))
+        }
+    }
+}
+
+impl Handler<Subscribe> for NATSActor {
+    type Result = ResponseFuture<
+        Box<dyn Stream<Item = NatsMessage, Error = NatsError> + Send + Sync + 'static>,
+        NatsError,
+    >;
+
+    fn handle(&mut self, msg: Subscribe, ctx: &mut Self::Context) -> Self::Result {
+        let sub_cmd = nitox::commands::SubCommand::builder()
+            .subject(msg.subject)
+            .build()
+            .unwrap();
+
+        let unsub_cmd = if let Some(msg_count) = msg.unsub_after {
+            Some(
+                nitox::commands::UnsubCommand::builder()
+                    .sid(sub_cmd.sid.clone())
+                    .max_msgs(Some(msg_count as u32))
+                    .build()
+                    .unwrap(),
+            )
+        } else {
+            None
+        };
+
+        debug!(target: "actix-nats", "Subscribing to topic {:#?}", msg);
+        let maybe_fut = self.inner.as_ref().map(|client| {
+            client.subscribe(sub_cmd).and_then(|stream| {
+                if let Some(unsub) = unsub_cmd {
+                    future::Either::A(client.unsubscribe(unsub).and_then(move |_| {
+                        future::ok(Box::new(stream)
+                            as Box<
+                                dyn Stream<Item = NatsMessage, Error = NatsError>
+                                    + Send
+                                    + Sync
+                                    + 'static,
+                            >)
+                    }))
+                } else {
+                    future::Either::B(future::ok(Box::new(stream)
+                        as Box<
+                            dyn Stream<Item = NatsMessage, Error = NatsError>
+                                + Send
+                                + Sync
+                                + 'static,
+                        >))
+                }
+            })
+        });
+
+        if let Some(fut) = maybe_fut {
+            Box::new(fut)
+
+        /*let fut: Box<
+                dyn Future<
+                        Item = Box<
+                            dyn Stream<Item = NatsMessage, Error = NatsError>
+                                + Send
+                                + Sync
+                                + 'static,
+                        >,
+                        Error = NatsError,
+                    > + Send
+                    + Sync,
+            > = Box::new();
+
+            fut*/
+        } else {
+            error!(target: "actix-nats", "Cannot subscribe because client is not ready");
             Box::new(future::err(NatsError::ServerDisconnected(None)))
         }
     }

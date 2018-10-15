@@ -1,4 +1,5 @@
 use actix::prelude::*;
+use futures::prelude::*;
 use nitox::{commands::Message as NatsMessage, NatsError};
 
 /// PublishMessage is a message that publishes a buffer to the NATS queue but doesn't wait for a reply afterwards.
@@ -21,7 +22,7 @@ impl Message for PublishMessage {
 
 /// Subscribe is a message that subscribes to a topic in the NATS queue
 /// Think of it as the Sub part in PubSub.
-/*#[derive(Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct Subscribe {
     pub(crate) subject: String,
     pub(crate) unsub_after: Option<usize>,
@@ -37,8 +38,11 @@ impl Subscribe {
 }
 
 impl Message for Subscribe {
-    type Result = Box<dyn Stream<Item = NatsMessage, Error = NatsError>>;
-}*/
+    type Result = Result<
+        Box<dyn Stream<Item = NatsMessage, Error = NatsError> + Send + Sync + 'static>,
+        NatsError,
+    >;
+}
 
 /// RequestWithReply creates a reply inbox in NATS, publishes a message (Request in terms of NATS grammar)
 /// and waits for the reply to come back.
