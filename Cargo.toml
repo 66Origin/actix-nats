@@ -21,11 +21,11 @@ license = "MIT/Apache-2.0"
 name = "actix-nats"
 readme = "README.md"
 repository = "https://github.com/YellowInnovation/actix-nats"
-version = "0.4.0"
+version = "0.4.1"
 
 [dependencies]
 actix = "0.7"
 backoff = "0.1"
 futures = "0.1"
-log = { version = "0.4", features = ["max_level_debug", "release_max_level_warn"] }
+log = "0.4"
 nitox = "0.1"
